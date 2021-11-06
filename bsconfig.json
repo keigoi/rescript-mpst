@@ -1,0 +1,22 @@
+{
+    "name": "rescript-mpst",
+    "version": "1.0.0",
+    "reason": { "react-jsx": 3 },
+    "sources": [
+      {
+        "dir": "src",
+        "subdirs": true
+      }
+    ],
+    "package-specs": [
+      {
+        "module": "commonjs",
+        "in-source": true
+      }
+    ],
+    "suffix": ".js",
+    "bs-dependencies": [],
+ 
+    "bsc-flags": ["-bs-super-errors"],
+    "namespace": true
+}
