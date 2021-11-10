@@ -114,6 +114,19 @@ type variant<'var,'v> = {make_var:'v => 'var, match_var:'var => option<'v>, }
 type disj<'lr,'l,'r> =
   {concat: (('l, 'r) => 'lr), split: 'lr => ('l, 'r)}
 
+
+
+let hello_or_goodbye = {
+  concat: (l,r) => {
+    "hello": l["hello"], 
+    "goodbye":r["goodbye"]
+  },
+  split: lr => (
+    {"hello":lr["hello"]}, 
+    {"goodbye":lr["goodbye"]}
+  )
+}
+
 // セッションを保持する型. 再帰のために lazy_tという型を使っており、そのため二つの宣言に分けてつくられている
 type session0<'t> = {session:'t, merge:('t,'t)=>'t}
 type session<'t> = lazy_t<session0<'t>>
@@ -187,17 +200,28 @@ let carol = {
 
 type label<'obj,'t,'var,'u> = {label_meth:method<'obj,'t>, label_var:variant<'var,'u>}
 
-let hello = 
-  {
-    label_meth: {
-      call_obj: obj => obj["hello"], 
-      make_obj: v => {"hello":v}
-    },
-    label_var: {
-      match_var: var => switch var { | (#hello(v)) => Some(v) | _ => None },
-      make_var: v => #hello(v)
-    }
+
+let hello = {
+  label_var: {
+    match_var: var => switch var { | #hello(v) => Some(v) | _ => None },
+    make_var: v => #hello(v)
+  },
+  label_meth: {
+    call_obj: obj => obj["hello"],
+    make_obj: v => {"hello": v}  
   }
+}
+
+let goodbye = {
+  label_var: {
+    match_var: var => switch var { | #goodbye(v) => Some(v) | _ => None },
+    make_var: v => #goodbye(v)
+  },
+  label_meth: {
+    call_obj: obj => obj["goodbye"],
+    make_obj: v => {"goodbye": v}  
+  }
+}
 
 let add = 
   {
@@ -241,9 +265,6 @@ let bye =
 // 具体的には
 // variant<#hello(int,next), (int,next)>
 
-type rec wrapper<_> = 
-  Wrap(variant<'var,('v,'c)>, session<'c>) : wrapper<'var>
-
 // これはヴァリアント型 (#が無いほうのヴァリアント型. )
 // ReScript では、ヴァリアント型は
 // type fruit = Apple(int) | Orange(string) | Banana(float)
@@ -276,10 +297,6 @@ type rec wrapper<_> =
 // 例えば、 bob が alice から hello を受信するとき
 // Wrapper({make_var:v => #hello(v)}, {session: {"carol":{"hello":...}}})
 
-// 受信のための型
-type inp<'var> = 
-  {wrappers: list<wrapper<'var>>, /* port: message_port<> */}
-
 // 単に wrapper のリストになっている。
 // 例えば hello, goodbye の2つを受信できるケースでは
 // {wrappers: list{ Wrap({make_var: v => #hello(v), ..}, next1), Wrap({make_var: v => #goodbye(v), ..}, next2) }}
@@ -295,10 +312,82 @@ type inp<'var> =
 // ここで、 #hello とか #goodbye とかのコンストラクタを receive が返せるようにするために、
 // variant<#hello('v), 'v> とかの型が必要になっている
 
-type out<'v,'s> = 
-  {out_cont:session<'s>, /* port: message_port<> */}
 
-// 入力チャネル ( {"carol": {wrappers: list{...}}} ) をマージする関数
+type rec variant_ex<_> = 
+  VariantEx( variant<'var, ('v, 'c)> ) : variant_ex<'v>
+
+// send(ch["Bob"]["hello"], 123)
+// send 
+// variant<'var, 'v> とはなんだったか？
+// variant<#hello('v), 'v> のように、ヴァリアント値を特定のコンストラクタから作るもの。
+// たとえば hello : variant<#hello('v), 'v> のとき、
+// hello.make_var(100) ==> #hello(100) が生成される。
+
+type out<'v,'s> = 
+  {out_cont:session<'s>, variant:variant_ex<'v>, /* raw_port: message_port<unit> */}
+
+type message_port<'v>
+@send external postMessage : (message_port<'v>, 'v) => unit = "postMessage"
+
+external cast : 'v => 'w = "%identity"
+
+let get_port : 'v 'c. out<'v, 'c> => message_port<unit> = (ch) => {
+  %raw(`((ch) => ch.raw_port)`)(ch)
+}
+
+/* 送受信するデータは、ヴァリアントのコンストラクタにラップすることにする。 */
+let send : 'v 'c. (out<'v, 'c>, 'v) => 'c = (ch, v) => {
+  let port = get_port(ch)
+  let VariantEx(var) = ch.variant
+  let hello_v = var.make_var( (v, %raw(`null`) ) ) // #hello(v, null) を送る
+  port->postMessage( cast( hello_v ) )
+  Lazy.force( ch.out_cont ).session
+}
+
+
+type rec wrapper<_> = 
+  Wrap(variant<'var,('v,'c)>, session<'c>) : wrapper<'var>
+
+// 受信のための型
+type inp<'var> = 
+  {wrappers: list<wrapper<'var>>, /* port: message_port<> */}
+
+let get_port_inp : 'var. inp<'var> => message_port<unit> = (ch) => {
+  %raw(`((ch) => ch.raw_port)`)(ch)
+}
+type onmessage_result<'v> = {data: 'v} 
+
+// #hello(v, null) と [Wrapper(#hello(..), bob_next)] から
+// #hello(v, bob_next) を作ってくれる関数
+external match_wrapper : ('var, list<wrapper<'var>>) => 'var = "TODO"
+
+let receive : 'var. inp<'var> => Promise.t<'var> = (ch) => {
+  let listen_onmessage : 'v. (message_port<unit>, onmessage_result<'v> => unit) => unit = (port,f) => {
+    %raw(`
+    (port,f) => {
+      port.onmessage = (e) => {
+        f(e)
+      }
+    }
+    `)(port,f)
+  }
+  let port = get_port_inp(ch)
+  Promise.make( (resolve, _reject) =>
+    listen_onmessage(port, (e) => {
+      let var = e.data // #hello(v, null) が来た
+      resolve(. match_wrapper(var, ch.wrappers) )
+    })
+  )
+}
+
+// MPSTの送受信のプロトコル
+// 例えば、 {(alice --> bob) hello } or {(alice --> bob) goodbye}
+// のとき、 MessagePort にはどんな値が流れるべきか？
+// hello を送った場合は #hello(123), goodbye のときは #goodbye("abc") のように、
+// 送ろうとしているメッセージの名前を表すヴァリアントで包まれたものが送られるように作ることにする。
+
+
+/* 入力チャネル ( {"carol": {wrappers: list{...}}} ) をマージする関数 */
 let merge_inp : 'a. (method<'a, inp<'var>>, 'a,'a) => 'a = (meth/*carolとかのフィールド*/, l, r) => {
   let l = meth.call_obj( l ) // {"carol": ... } をひっぺがす
   let r = meth.call_obj( r ) // おなじ
@@ -330,7 +419,7 @@ let comm
 
   let bob_next = bob.role_lens.get( next_triple )
   let bob_inp /* inp<#hello('v,'bob_next)> */ = {wrappers: list{ Wrap(hello.label_var, bob_next) }}
-  let bob_inp /* {"alice": inp< #hello<'v, 'bob_next>>}*/ = alice.role_meth.make_obj/*{"alice":..}をかぶせる関数*/( bob_inp )
+  let bob_inp /* {"alice": inp< #hello('v, 'bob_next) >}*/ = alice.role_meth.make_obj/*{"alice":..}をかぶせる関数*/( bob_inp )
   let bob_inp =
     lazy {
       session: bob_inp,
@@ -338,7 +427,7 @@ let comm
     }
   let mid_triple = bob.role_lens.put(next_triple, bob_inp)
   let alice_next = alice.role_lens.get( mid_triple )
-  let alice_out = {out_cont: alice_next}
+  let alice_out = {out_cont: alice_next, variant: VariantEx(hello.label_var) } // 注意: ここでは raw_port をセットしていない！
   let alice_out /* {"bob": {"hello": out<'v, 'alice_next>}} */= 
       bob.role_meth.make_obj( hello.label_meth.make_obj( alice_out ) )
   let alice_out =
@@ -449,4 +538,49 @@ let choice_at
   let cur = alice.role_lens.put(mid, alice_lr)
   cur
 }
+
+// alice : role<'a1, 'a2, global<'a1, 'b, 'c>, global<'a2, 'b. 'c>, {"alice":'x}, 'x> 
+
+let extract : 'a 'b 'c 't. (global<'a,'b,'c>, role<'t,_, global<'a,'b,'c> ,_,_,_>) => 't = (g, role) => {
+  let a = role.role_lens.get(g)
+  let a = Lazy.force(a).session
+  // bob, carol への messageport をセットする
+ a 
+}
+
+// let ch = extract(g, alice) // alice のチャネルを取り出す
+// ch // <- 問題: こいつには messageport がセットされていない
+
+// 実のところ、 {"bob":{"hello": out<..>}}, {"bob": {"goodbye": out<...>}} と、
+// disj<{"hello", "goodbye"}, {"hello"}, {"goodbye"}> から、
+// disj<{"bob":{"hello":out}, {"bob":"goodbye"}, {"hello"}, {"goodbye"}> から、
+let to_bob = disj => {
+    concat: (l,r) => {
+      "bob": disj.concat(l["bob"], r["bob"])
+    },
+    split: lr => {
+      let (l,r) = disj.split( lr["bob"] )
+      (
+        {"bob": l}, 
+        {"bob": r}
+      )
+    }
+  }
+
+let () = {
+  let g = 
+    choice_at(alice, to_bob(hello_or_goodbye),
+      (alice, comm(alice, bob, hello, finish) ),
+      (alice, comm(alice, bob, goodbye, finish) ) )
+  
+  let ch = extract(g, alice)
+
+  let bob_port = %raw(` start webworker for bob and return the messageport `)
+
+  %raw(` traverse ch to set bob_port `)
+  ()
+}
+
+
+
 

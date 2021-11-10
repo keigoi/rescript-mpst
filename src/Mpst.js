@@ -5,6 +5,7 @@ var List = require("rescript/lib/js/list.js");
 var Curry = require("rescript/lib/js/curry.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
 var CamlinternalLazy = require("rescript/lib/js/camlinternalLazy.js");
+var Caml_external_polyfill = require("rescript/lib/js/caml_external_polyfill.js");
 
 function hello_field_call_obj(obj) {
   return obj.hello;
@@ -26,6 +27,29 @@ var myhello = {
 };
 
 var hellonum = Curry._1(hello_field_call_obj, myhello);
+
+function hello_or_goodbye_concat(l, r) {
+  return {
+          hello: l.hello,
+          goodbye: r.goodbye
+        };
+}
+
+function hello_or_goodbye_split(lr) {
+  return [
+          {
+            hello: lr.hello
+          },
+          {
+            goodbye: lr.goodbye
+          }
+        ];
+}
+
+var hello_or_goodbye = {
+  concat: hello_or_goodbye_concat,
+  split: hello_or_goodbye_split
+};
 
 function lens_a_get(param) {
   return param[0];
@@ -157,6 +181,37 @@ var hello = {
   label_var: hello_label_var
 };
 
+var goodbye_label_meth = {
+  call_obj: (function (obj) {
+      return obj.goodbye;
+    }),
+  make_obj: (function (v) {
+      return {
+              goodbye: v
+            };
+    })
+};
+
+var goodbye_label_var = {
+  make_var: (function (v) {
+      return {
+              NAME: "goodbye",
+              VAL: v
+            };
+    }),
+  match_var: (function ($$var) {
+      if (typeof $$var === "object" && $$var.NAME === "goodbye") {
+        return Caml_option.some($$var.VAL);
+      }
+      
+    })
+};
+
+var goodbye = {
+  label_meth: goodbye_label_meth,
+  label_var: goodbye_label_var
+};
+
 var add_label_meth = {
   call_obj: (function (obj) {
       return obj.add;
@@ -250,6 +305,40 @@ var bye = {
   label_var: bye_label_var
 };
 
+function get_port(ch) {
+  return (((ch) => ch.raw_port))(ch);
+}
+
+function send(ch, v) {
+  var port = get_port(ch);
+  var $$var = ch.variant;
+  var hello_v = Curry._1($$var._0.make_var, [
+        v,
+        null
+      ]);
+  port.postMessage(hello_v);
+  return CamlinternalLazy.force(ch.out_cont).session;
+}
+
+function get_port_inp(ch) {
+  return (((ch) => ch.raw_port))(ch);
+}
+
+function receive(ch) {
+  var port = get_port_inp(ch);
+  return new Promise((function (resolve, _reject) {
+                var f = function (e) {
+                  var $$var = e.data;
+                  return resolve(Caml_external_polyfill.resolve("TODO")($$var, ch.wrappers));
+                };
+                return ((port,f) => {
+      port.onmessage = (e) => {
+        f(e)
+      }
+    })(port, f);
+              }));
+}
+
 function merge_inp(meth, l, r) {
   var l$1 = Curry._1(meth.call_obj, l);
   var r$1 = Curry._1(meth.call_obj, r);
@@ -302,8 +391,12 @@ function comm(alice, bob, hello, next_triple) {
   };
   var mid_triple = Curry._2(bob.role_lens.put, next_triple, bob_inp$2);
   var alice_next = Curry._1(alice.role_lens.get, mid_triple);
+  var alice_out_variant = /* VariantEx */{
+    _0: hello.label_var
+  };
   var alice_out = {
-    out_cont: alice_next
+    out_cont: alice_next,
+    variant: alice_out_variant
   };
   var alice_out$1 = Curry._1(bob.role_meth.make_obj, Curry._1(hello.label_meth.make_obj, alice_out));
   var alice_out$2 = {
@@ -398,9 +491,50 @@ function choice_at(alice, disj, param, param$1) {
   return Curry._2(alice.role_lens.put, mid, alice_lr);
 }
 
+function extract(g, role) {
+  var a = Curry._1(role.role_lens.get, g);
+  return CamlinternalLazy.force(a).session;
+}
+
+function to_bob(disj) {
+  return {
+          concat: (function (l, r) {
+              return {
+                      bob: Curry._2(disj.concat, l.bob, r.bob)
+                    };
+            }),
+          split: (function (lr) {
+              var match = Curry._1(disj.split, lr.bob);
+              return [
+                      {
+                        bob: match[0]
+                      },
+                      {
+                        bob: match[1]
+                      }
+                    ];
+            })
+        };
+}
+
+var g = choice_at(alice, to_bob(hello_or_goodbye), [
+      alice,
+      comm(alice, bob, hello, finish)
+    ], [
+      alice,
+      comm(alice, bob, goodbye, finish)
+    ]);
+
+extract(g, alice);
+
+((start webworker for bob and return the messageport));
+
+((traverse ch to set bob_port));
+
 exports.hello_field = hello_field;
 exports.myhello = myhello;
 exports.hellonum = hellonum;
+exports.hello_or_goodbye = hello_or_goodbye;
 exports.lens_a = lens_a;
 exports.lens_b = lens_b;
 exports.lens_c = lens_c;
@@ -408,13 +542,20 @@ exports.alice = alice;
 exports.bob = bob;
 exports.carol = carol;
 exports.hello = hello;
+exports.goodbye = goodbye;
 exports.add = add;
 exports.res = res;
 exports.bye = bye;
+exports.get_port = get_port;
+exports.send = send;
+exports.get_port_inp = get_port_inp;
+exports.receive = receive;
 exports.merge_inp = merge_inp;
 exports.closed = closed;
 exports.finish = finish;
 exports.comm = comm;
 exports.merge_global = merge_global;
 exports.choice_at = choice_at;
+exports.extract = extract;
+exports.to_bob = to_bob;
 /* hellonum Not a pure module */
