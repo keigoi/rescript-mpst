@@ -15,7 +15,7 @@
       }
     ],
     "suffix": ".js",
-    "bs-dependencies": [],
+    "bs-dependencies": ["@ryyppy/rescript-promise"],
  
     "bsc-flags": ["-bs-super-errors"],
     "namespace": true

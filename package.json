@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "rescript": "^9.1.4"
+    "rescript": "^9.1.4",
+    "@ryyppy/rescript-promise": "^2.1.0"
   }
 }
