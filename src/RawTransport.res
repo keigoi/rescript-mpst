@@ -8,7 +8,7 @@ type mpst_msg = (label_tag, payload)
 
 type mpchan = {
   self: role_tag,
-  channels: Js.Dict.t<MessagePort.t<mpst_msg>>,
+  channels: Js.Dict.t<MessagePort.t<mpst_msg,mpst_msg>>,
 }
 
 external payload_cast: 'v => payload = "%identity"

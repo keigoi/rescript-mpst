@@ -1,5 +1,8 @@
-type t<'v>
-type msg<'v> = {"data": 'v}
+type t<'v, 'w>
 
-@send external postMessage: (t<'v>, 'v) => unit = "postMessage"
-@set external setOnmessage: (t<'v>, msg<'v> => unit) => unit = "onmessage"
+@send external postMessage: (t<'v, 'w>, 'v) => unit = "postMessage"
+@set external setOnmessage: (t<'v, 'w>, {"data": 'w} => unit) => unit = "onmessage"
+
+type message_channel<'v, 'w> = {port1: t<'v,'w>, port2: t<'w,'v>}
+
+@new external createMessageChannel: unit => message_channel<'v, 'w> = "MessageChannel"
