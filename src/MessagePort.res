@@ -5,4 +5,4 @@ type t<'v, 'w>
 
 type message_channel<'v, 'w> = {port1: t<'v,'w>, port2: t<'w,'v>}
 
-@new external createMessageChannel: unit => message_channel<'v, 'w> = "MessageChannel"
+@new external newMessageChannel: unit => message_channel<'v, 'w> = "MessageChannel"

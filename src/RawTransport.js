@@ -3,7 +3,7 @@
 
 
 function raw_send(mpchan, role, label, v) {
-  var ch = mpchan.channels[role];
+  var ch = mpchan[role];
   ch.postMessage([
         label,
         v
@@ -12,10 +12,14 @@ function raw_send(mpchan, role, label, v) {
 }
 
 function raw_receive(mpchan, role) {
-  var ch = mpchan.channels[role];
-  return new Promise((function (_resolve, _reject) {
-                ch.onmessage = (function (_e) {
-                    
+  var ch = mpchan[role];
+  return new Promise((function (resolve, _reject) {
+                ch.onmessage = (function (e) {
+                    var match = e.data;
+                    return resolve([
+                                match[0],
+                                match[1]
+                              ]);
                   });
                 
               }));
