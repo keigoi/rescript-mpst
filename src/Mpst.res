@@ -85,20 +85,20 @@ let hello_or_goodbye = () => {
 
 let to_bob = disj => {
   concat: (l, r) =>
-    Lists.map(
+    List.map(
       v => #Bob({__out_witness: v}),
       disj().concat(
-        Lists.map((#Bob(v)) => v.__out_witness, l),
-        Lists.map((#Bob(v)) => v.__out_witness, r),
+        List.map((#Bob(v)) => v.__out_witness, l),
+        List.map((#Bob(v)) => v.__out_witness, r),
       ),
     ),
   split: lr => {
-    let (l, r) = disj().split(Lists.map((#Bob(v)) => v.__out_witness, lr))
-    (Lists.map(v => #Bob({__out_witness: v}), l), Lists.map(v => #Bob({__out_witness: v}), r))
+    let (l, r) = disj().split(List.map((#Bob(v)) => v.__out_witness, lr))
+    (List.map(v => #Bob({__out_witness: v}), l), List.map(v => #Bob({__out_witness: v}), r))
   },
 }
 
-let open_variant_to_tag: 'var. open_variant<'var, _> => Polyvar.tag = var => {
+let open_variant_to_tag: 'var. open_variant<'var, _> => Types.polyvar_tag = var => {
   let (roletag, _) = Raw.destruct_polyvar(var(Raw.dontknow()))
   roletag
 }
@@ -115,11 +115,15 @@ let send: 'var 'lab 'v 'c. (
   {mpchan: sess.mpchan, dummy_witness: Raw.dontknow()}
 }
 
-let receive: 'var 'lab. (session<'var>, open_variant<'var, inp<'lab>>) => 'lab = (sess, role) => {
+let receive: 'var 'lab. (session<'var>, open_variant<'var, inp<'lab>>) => Js.Promise.t<'lab> = (
+  sess,
+  role,
+) => {
   let roletag = open_variant_to_tag(role)
-  let (labeltag, v) = Transport.raw_receive(~from=roletag)
-  let cont = {mpchan: sess.mpchan, dummy_witness: Raw.dontknow()}
-  Raw.make_polyvar(labeltag, (v, cont))
+  Transport.raw_receive(sess.mpchan, ~from=roletag)->Promise.thenResolve(((labeltag, val)) => {
+    let cont = {mpchan: sess.mpchan, dummy_witness: Raw.dontknow()}
+    Raw.make_polyvar(labeltag, (val, cont))
+  })
 }
 
 let close: session<unit> => unit = _ => ()
@@ -163,26 +167,27 @@ let g = () =>
 let a = () => {
   let ch = extract(g(), alice)
   let ch1 = send(ch, x => #Bob(x), x => #hello(x), 123)
-  switch receive(ch1, x => #Carol(x)) {
-  | #hello(_v, ch2) => close(ch2)
-  }
-  ()
+  receive(ch1, x => #Carol(x))->Promise.thenResolve((#hello(_v, ch2)) => close(ch2))
 }
 
 let b = () => {
   let ch = extract(g(), bob)
-  let ch3 = switch receive(ch, x => #Alice(x)) {
-  | #hello(_v, ch2) => send(ch2, x => #Carol(x), x => #hello(x), 123)
-  | #goodbye(_v, ch2) => send(ch2, x => #Carol(x), x => #goodbye(x), "foo")
-  }
-  close(ch3)
+  receive(ch, x => #Alice(x))->Promise.thenResolve(ret => {
+    let ch = switch ret {
+    | #hello(_v, ch) => send(ch, x => #Carol(x), x => #hello(x), 123)
+    | #goodbye(_v, ch) => send(ch, x => #Carol(x), x => #goodbye(x), "foo")
+    }
+    close(ch)
+  })
 }
 
 let c = () => {
   let ch = extract(g(), carol)
-  let ch3 = switch receive(ch, x => #Bob(x)) {
-  | #hello(_v, ch2) => send(ch2, x => #Alice(x), x => #hello(x), 123)
-  | #goodbye(_v, ch2) => ch2
-  }
-  close(ch3)
+  receive(ch, x => #Bob(x))->Promise.thenResolve(ret => {
+    let ch = switch ret {
+    | #hello(_v, ch) => send(ch, x => #Alice(x), x => #hello(x), 123)
+    | #goodbye(_v, ch) => ch
+    }
+    close(ch)
+  })
 }

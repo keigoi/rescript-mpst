@@ -1,15 +1,17 @@
 // external make_variant: (Transport.variant_tag, 't) => 'var = "make_variant";
 
-external fail: 'variant => 'a = "fail"
+let fail: 'a. unit => 'a = () => %raw(` () => { throw "rescript-mpst-fail"; }`)()
 
-external dontknow: unit => 'a = "dontknow"
+let dontknow: 'a. unit => 'a = () => %raw(`null`)
 
-external assertfalse: unit => 'a = "assertfalse"
+let assertfalse: 'a. unit => 'a = () => %raw(` () => { throw "rescript-mpst-assert-false"}`)()
 
-external todo: 'variant => 'a = "todo"
+let todo: 'a. unit => 'a = () => %raw(` () => { throw "rescript-mpst-todo"; }`)()
 
-external guarded_receive: (~guard: 'a => bool) => 'a = "guarded_receive"
+// let guarded_receive: 'a. (~guard: 'a => bool) => 'a = "guarded_receive"
 
-external make_polyvar: (Polyvar.tag, 'a) => 'var = "make_polyvar"
+let make_polyvar: 'a 'var. (Types.polyvar_tag, 'a) => 'var = (tag, v) =>
+  %raw(` (tag, v) => {NAME:tag, VAL:v}`)(tag, v)
 
-external destruct_polyvar: 'var => (Polyvar.tag, 'a) = "destruct_polyvar"
+let destruct_polyvar: 'a 'var. 'var => (Types.polyvar_tag, 'a) = var =>
+  %raw(` var => [var.NAME, var.VAL]`)(var)
