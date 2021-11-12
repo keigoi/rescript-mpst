@@ -9,15 +9,15 @@ module MainSide = {
   ) => {
     let cnt = Js.Array.length(roles)
     let arr = Belt.Array.makeBy(cnt, i =>
-      Belt.Array.makeBy(cnt - i, _ => {
+      Belt.Array.makeBy(i + 1, _ => {
         MessagePort.newMessageChannel()
       })
     )
     Js.List.init(cnt, (. i) => {
       let portlist = Js.List.init(cnt, (. j) => {
-        let port = if i >= j {
+        let port = if j < i {
           arr[i][j].port1
-        } else if i <= j {
+        } else if j > i {
           arr[j][i].port2
         } else {
           arr[i][j].port1 // FIXME self-sent message
@@ -30,7 +30,7 @@ module MainSide = {
 
   let newWorker = WebWorker.MainSide.newWorker
 
-  let initWorkers: (
+  let initWorkers0: (
     RawTypes.polyvar_tag,
     array<(RawTypes.polyvar_tag, mpstworker)>,
   ) => RawTransport.mpchan = (mainrole, workers) => {
@@ -44,5 +44,28 @@ module MainSide = {
     }, workers)->ignore
     Js.Dict.unsafeGet(ports_map, mainrole)
   }
+
+  let initWorkers: (
+    Mpst.global<'a, 'b, 'c>,
+    Mpst.role<'t, _, Mpst.global<'a, 'b, 'c>, _, _, _>,
+    array<(RawTypes.polyvar_tag, mpstworker)>,
+  ) => Mpst.session<'t> = (_g, mainrole, workers) => {
+    let (mainrole_tag, _) = Raw.destruct_polyvar(mainrole.role_label.closed_make(Raw.dontknow()))
+    let mpchan = initWorkers0(mainrole_tag, workers)
+    {mpchan: mpchan, dummy_witness: Raw.dontknow()}
+  }
 }
 
+module WorkerSide = {
+  let init: (
+    Mpst.global<'a, 'b, 'c>,
+    Mpst.role<'t, _, Mpst.global<'a, 'b, 'c>, _, _, _>,
+  ) => Promise.t<Mpst.session<'t>> = (_g, _role) => {
+    Promise.make((resolve, _reject) => {
+      WebWorker.WorkerSide.setOnMessage(e => {
+        let sess = {Mpst.mpchan: e["data"], dummy_witness: Raw.dontknow()}
+        resolve(. sess)
+      })
+    })
+  }
+}

@@ -8,7 +8,10 @@ type session<'a> = {
 type open_variant<'var, 'v> = 'v => 'var
 
 // #Bob(v) => v
-type closed_variant<'var, 'v> = 'var => 'v
+type closed_variant<'var, 'v> = {
+  closed_match: 'var => 'v,
+  closed_make: 'v => 'var,
+}
 
 type disj<'lr, 'l, 'r> = {
   concat: (list<'l>, list<'r>) => list<'lr>,
@@ -22,7 +25,7 @@ type lens<'a, 'b, 's, 't> = {
   put: ('s, session<'b>) => 't,
 }
 
-let lens_a =  {
+let lens_a = {
   get: ((a, _, _)) => a,
   put: ((_, b, c), a) => (a, b, c),
 }
@@ -39,13 +42,22 @@ type role<'a, 'b, 's, 't, 'obj, 'v> = {
   role_label: closed_variant<'obj, 'v>,
   role_lens: lens<'a, 'b, 's, 't>,
 }
-// 
+//
 
-let alice = {role_label: (#Alice(v)) => v, role_lens: lens_a}
+let alice = {
+  role_label: {closed_match: (#Alice(v)) => v, closed_make: v => #Alice(v)},
+  role_lens: lens_a,
+}
 
-let bob = {role_label: (#Bob(v)) => v, role_lens: lens_b}
+let bob = {
+  role_label: {closed_match: (#Bob(v)) => v, closed_make: v => #Bob(v)},
+  role_lens: lens_b,
+}
 
-let carol = {role_label: (#Carol(v)) => v, role_lens: lens_c}
+let carol = {
+  role_label: {closed_match: (#Carol(v)) => v, closed_make: v => #Carol(v)},
+  role_lens: lens_c,
+}
 
 type label<'obj, 't, 'var, 'u> = {
   label_closed: closed_variant<'obj, 't>,
@@ -53,12 +65,12 @@ type label<'obj, 't, 'var, 'u> = {
 }
 
 let hello = {
-  label_closed: (#hello(v)) => v,
+  label_closed: {closed_match: (#hello(v)) => v, closed_make: v => #hello(v)},
   label_open: v => #hello(v),
 }
 
 let goodbye = {
-  label_closed: (#goodbye(v)) => v,
+  label_closed: {closed_match: (#goodbye(v)) => v, closed_make: v => #goodbye(v)},
   label_open: v => #goodbye(v),
 }
 
@@ -101,8 +113,8 @@ let to_bob = disj => {
   },
 }
 
-let role_to_tag : role<_, _, _, _, _, _> => RawTypes.polyvar_tag = role => {
-  let (roletag, _) = Raw.destruct_polyvar(role.role_label(Raw.dontknow()))
+let role_to_tag: role<_, _, _, _, _, _> => RawTypes.polyvar_tag = role => {
+  let (roletag, _) = Raw.destruct_polyvar(role.role_label.closed_make(Raw.dontknow()))
   roletag
 }
 
@@ -136,7 +148,7 @@ let receive: 'var 'lab. (session<'var>, open_variant<'var, inp<'lab>>) => Js.Pro
 
 let close: session<unit> => unit = _ => ()
 
-let x : 'a = 1
+let x: 'a = 1
 
 let \"-->": 'from 'to_ 'outlab 'inplab 's 't 'v 'next 'mid 'cur. (
   role<'s, 'to_, 'mid, 'cur, 'from, inp<'inplab>>,
@@ -161,16 +173,15 @@ let extract: 'a 'b 'c. (
 
 // Example
 
-let g = 
-  choice_at(
+let g = choice_at(
+  alice,
+  to_bob(hello_or_goodbye),
+  (
     alice,
-    to_bob(hello_or_goodbye),
-    (
-      alice,
-      \"-->"(alice, bob)(hello, \"-->"(bob, carol)(hello, \"-->"(carol, alice)(hello, finish))),
-    ),
-    (alice, \"-->"(alice, bob)(goodbye, \"-->"(bob, carol)(goodbye, finish))),
-  )
+    \"-->"(alice, bob)(hello, \"-->"(bob, carol)(hello, \"-->"(carol, alice)(hello, finish))),
+  ),
+  (alice, \"-->"(alice, bob)(goodbye, \"-->"(bob, carol)(goodbye, finish))),
+)
 
 let a = () => {
   let ch = extract(g, alice)
@@ -200,4 +211,3 @@ let c = () => {
     close(ch)
   })
 }
-
