@@ -1,6 +1,6 @@
 module MainSide = {
   open WebWorker.MainSide
-  
+
   type mpstport = MessagePort.t<RawTransport.mpst_msg, RawTransport.mpst_msg>
   type mpstworker = worker<array<mpstport>, unit>
 
@@ -25,10 +25,22 @@ module MainSide = {
     )
   }
 
-  let initWorkers: array<mpstworker> => unit = workers => {
-    let cnt = Belt.Array.length(workers)
+  let initWorkers: (RawTypes.polyvar_tag, array<(RawTypes.polyvar_tag, mpstworker)>) => unit = (
+    mainrole,
+    workers,
+  ) => {
+    let cnt = Belt.Array.length(workers) + 1
     let ports_array = make_ports(~workers=cnt)
-    Js.Array.mapi((worker, i) => {
+    let ports_map = Js.Array.mapi((ports, i) => {
+        let port_map = %raw(`{}`)
+        Js.Array.mapi(((role, _worker), j) => {
+            %raw(`(ports, port_map,role,j) => {
+                port_map[role] = ports[j];
+            }`)(ports, port_map, role, j)
+        }, workers) -> ignore
+        port_map
+    }, ports_array)
+    Js.Array.mapi(((_role, worker), i) => {
       let ports = ports_array[i]
       worker->postMessage(ports, Js.Array.map(transfer, ports))
     }, workers)->ignore

@@ -8,7 +8,7 @@ module MainSide = {
 }
 
 module WorkerSide = {
-  external postMessage: 'v => unit = "postMessage"
+  let postMessage: 'v. 'v => unit = v => %raw(`v => self.postMessage(v)`)(v) 
   let setOnMessage: ({"data": 'v} => unit) => unit = f =>
     %raw(`
     f => { onmessage = f }

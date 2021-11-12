@@ -190,6 +190,10 @@ function to_bob(disj) {
         };
 }
 
+function role_to_tag(role) {
+  return Raw$RescriptMpst.destruct_polyvar(Curry._1(role.role_label, Raw$RescriptMpst.dontknow(undefined)))[0];
+}
+
 function open_variant_to_tag($$var) {
   return Raw$RescriptMpst.destruct_polyvar(Curry._1($$var, Raw$RescriptMpst.dontknow(undefined)))[0];
 }
@@ -351,6 +355,7 @@ exports.goodbye = goodbye;
 exports.list_match = list_match;
 exports.hello_or_goodbye = hello_or_goodbye;
 exports.to_bob = to_bob;
+exports.role_to_tag = role_to_tag;
 exports.open_variant_to_tag = open_variant_to_tag;
 exports.send = send;
 exports.receive = receive;

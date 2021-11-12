@@ -21,12 +21,21 @@ function make_ports(cnt) {
               }));
 }
 
-function initWorkers(workers) {
-  var cnt = workers.length;
+function initWorkers(mainrole, workers) {
+  var cnt = workers.length + 1 | 0;
   var ports_array = make_ports(cnt);
-  workers.map(function (worker, i) {
+  ports_array.map(function (ports, i) {
+        var port_map = {};
+        workers.map(function (param, j) {
+              return ((ports, port_map,role,j) => {
+                port_map[role] = ports[j];
+            })(ports, port_map, param[0], j);
+            });
+        return port_map;
+      });
+  workers.map(function (param, i) {
         var ports = Caml_array.get(ports_array, i);
-        worker.postMessage(ports, ports.map(function (prim) {
+        param[1].postMessage(ports, ports.map(function (prim) {
                   return prim;
                 }));
         

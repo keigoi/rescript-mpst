@@ -98,6 +98,11 @@ let to_bob = disj => {
   },
 }
 
+let role_to_tag : role<_, _, _, _, _, _> => RawTypes.polyvar_tag = role => {
+  let (roletag, _) = Raw.destruct_polyvar(role.role_label(Raw.dontknow()))
+  roletag
+}
+
 let open_variant_to_tag: 'var. open_variant<'var, _> => RawTypes.polyvar_tag = var => {
   let (roletag, _) = Raw.destruct_polyvar(var(Raw.dontknow()))
   roletag
