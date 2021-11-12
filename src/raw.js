@@ -20,11 +20,11 @@ function todo(param) {
 }
 
 function make_polyvar(tag, v) {
-  return Curry._2(((tag, v) => {NAME:tag, VAL:v}), tag, v);
+  return ((tag, v) => ({"NAME":tag, "VAL":v}))(tag, v);
 }
 
 function destruct_polyvar($$var) {
-  return Curry._1((var => [var.NAME, var.VAL]), $$var);
+  return ((var_) => ([var_.NAME, var_.VAL]))($$var);
 }
 
 exports.fail = fail;
