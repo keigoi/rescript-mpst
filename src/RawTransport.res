@@ -1,6 +1,6 @@
-type role_tag = Types.polyvar_tag
+type role_tag = RawTypes.polyvar_tag
 
-type label_tag = Types.polyvar_tag
+type label_tag = RawTypes.polyvar_tag
 
 type payload
 

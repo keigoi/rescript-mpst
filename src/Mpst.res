@@ -1,6 +1,6 @@
 type session<'a> = {
   dummy_witness: 'a,
-  mpchan: Transport.mpchan,
+  mpchan: RawTransport.mpchan,
 }
 
 // 多相ヴァリアントのコンストラクタ. open_variant([> `Bob('v)], 'v)
@@ -98,7 +98,7 @@ let to_bob = disj => {
   },
 }
 
-let open_variant_to_tag: 'var. open_variant<'var, _> => Types.polyvar_tag = var => {
+let open_variant_to_tag: 'var. open_variant<'var, _> => RawTypes.polyvar_tag = var => {
   let (roletag, _) = Raw.destruct_polyvar(var(Raw.dontknow()))
   roletag
 }
@@ -111,7 +111,7 @@ let send: 'var 'lab 'v 'c. (
 ) => session<'c> = (sess, role, label, v) => {
   let roletag = open_variant_to_tag(role)
   let labeltag = open_variant_to_tag(label)
-  Transport.raw_send(sess.mpchan, roletag, labeltag, v)
+  RawTransport.raw_send(sess.mpchan, roletag, labeltag, v)
   {mpchan: sess.mpchan, dummy_witness: Raw.dontknow()}
 }
 
@@ -120,7 +120,7 @@ let receive: 'var 'lab. (session<'var>, open_variant<'var, inp<'lab>>) => Js.Pro
   role,
 ) => {
   let roletag = open_variant_to_tag(role)
-  Transport.raw_receive(sess.mpchan, ~from=roletag)->Promise.thenResolve(((labeltag, val)) => {
+  RawTransport.raw_receive(sess.mpchan, ~from=roletag)->Promise.thenResolve(((labeltag, val)) => {
     let cont = {mpchan: sess.mpchan, dummy_witness: Raw.dontknow()}
     Raw.make_polyvar(labeltag, (val, cont))
   })

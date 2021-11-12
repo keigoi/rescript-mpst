@@ -3,8 +3,8 @@
 
 var List = require("rescript/lib/js/list.js");
 var Curry = require("rescript/lib/js/curry.js");
-var Raw$RescriptMpst = require("./raw.js");
-var Transport$RescriptMpst = require("./transport.js");
+var Raw$RescriptMpst = require("./Raw.js");
+var RawTransport$RescriptMpst = require("./RawTransport.js");
 
 function lens_a(param) {
   return {
@@ -197,7 +197,7 @@ function open_variant_to_tag($$var) {
 function send(sess, role, label, v) {
   var roletag = open_variant_to_tag(role);
   var labeltag = open_variant_to_tag(label);
-  Transport$RescriptMpst.raw_send(sess.mpchan, roletag, labeltag, v);
+  RawTransport$RescriptMpst.raw_send(sess.mpchan, roletag, labeltag, v);
   return {
           dummy_witness: Raw$RescriptMpst.dontknow(undefined),
           mpchan: sess.mpchan
@@ -206,7 +206,7 @@ function send(sess, role, label, v) {
 
 function receive(sess, role) {
   var roletag = open_variant_to_tag(role);
-  return Transport$RescriptMpst.raw_receive(sess.mpchan, roletag).then(function (param) {
+  return RawTransport$RescriptMpst.raw_receive(sess.mpchan, roletag).then(function (param) {
               var cont_dummy_witness = Raw$RescriptMpst.dontknow(undefined);
               var cont_mpchan = sess.mpchan;
               var cont = {
