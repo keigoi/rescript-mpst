@@ -6,147 +6,159 @@ var Curry = require("rescript/lib/js/curry.js");
 var Raw$RescriptMpst = require("./Raw.js");
 var RawTransport$RescriptMpst = require("./RawTransport.js");
 
-function lens_a(param) {
+function lens_a_get(param) {
+  return param[0];
+}
+
+function lens_a_put(param, a) {
+  return [
+          a,
+          param[1],
+          param[2]
+        ];
+}
+
+var lens_a = {
+  get: lens_a_get,
+  put: lens_a_put
+};
+
+function lens_b_get(param) {
+  return param[1];
+}
+
+function lens_b_put(param, b) {
+  return [
+          param[0],
+          b,
+          param[2]
+        ];
+}
+
+var lens_b = {
+  get: lens_b_get,
+  put: lens_b_put
+};
+
+function lens_c_get(param) {
+  return param[2];
+}
+
+function lens_c_put(param, c) {
+  return [
+          param[0],
+          param[1],
+          c
+        ];
+}
+
+var lens_c = {
+  get: lens_c_get,
+  put: lens_c_put
+};
+
+function alice_role_label(param) {
+  return param.VAL;
+}
+
+var alice = {
+  role_label: alice_role_label,
+  role_lens: lens_a
+};
+
+function bob_role_label(param) {
+  return param.VAL;
+}
+
+var bob = {
+  role_label: bob_role_label,
+  role_lens: lens_b
+};
+
+function carol_role_label(param) {
+  return param.VAL;
+}
+
+var carol = {
+  role_label: carol_role_label,
+  role_lens: lens_c
+};
+
+function hello_label_closed(param) {
+  return param.VAL;
+}
+
+function hello_label_open(v) {
   return {
-          get: (function (param) {
-              return param[0];
-            }),
-          put: (function (param, a) {
-              return [
-                      a,
-                      param[1],
-                      param[2]
-                    ];
-            })
+          NAME: "hello",
+          VAL: v
         };
 }
 
-function lens_b(param) {
+var hello = {
+  label_closed: hello_label_closed,
+  label_open: hello_label_open
+};
+
+function goodbye_label_closed(param) {
+  return param.VAL;
+}
+
+function goodbye_label_open(v) {
   return {
-          get: (function (param) {
-              return param[1];
-            }),
-          put: (function (param, b) {
-              return [
-                      param[0],
-                      b,
-                      param[2]
-                    ];
-            })
+          NAME: "goodbye",
+          VAL: v
         };
 }
 
-function lens_c(param) {
-  return {
-          get: (function (param) {
-              return param[2];
-            }),
-          put: (function (param, c) {
-              return [
-                      param[0],
-                      param[1],
-                      c
-                    ];
-            })
-        };
-}
-
-function alice(param) {
-  return {
-          role_label: (function (param) {
-              return param.VAL;
-            }),
-          role_lens: lens_a(undefined)
-        };
-}
-
-function bob(param) {
-  return {
-          role_label: (function (param) {
-              return param.VAL;
-            }),
-          role_lens: lens_b(undefined)
-        };
-}
-
-function carol(param) {
-  return {
-          role_label: (function (param) {
-              return param.VAL;
-            }),
-          role_lens: lens_c(undefined)
-        };
-}
-
-function hello(param) {
-  return {
-          label_closed: (function (param) {
-              return param.VAL;
-            }),
-          label_open: (function (v) {
-              return {
-                      NAME: "hello",
-                      VAL: v
-                    };
-            })
-        };
-}
-
-function goodbye(param) {
-  return {
-          label_closed: (function (param) {
-              return param.VAL;
-            }),
-          label_open: (function (v) {
-              return {
-                      NAME: "goodbye",
-                      VAL: v
-                    };
-            })
-        };
-}
+var goodbye = {
+  label_closed: goodbye_label_closed,
+  label_open: goodbye_label_open
+};
 
 function list_match(param, param$1) {
   return Raw$RescriptMpst.assertfalse(undefined);
 }
 
-function hello_or_goodbye(param) {
+function hello_or_goodbye_concat(l, r) {
   return {
-          concat: (function (l, r) {
-              return {
-                      hd: {
-                        NAME: "hello",
-                        VAL: Raw$RescriptMpst.assertfalse(undefined)
-                      },
-                      tl: {
-                        hd: {
-                          NAME: "goodbye",
-                          VAL: Raw$RescriptMpst.assertfalse(undefined)
-                        },
-                        tl: /* [] */0
-                      }
-                    };
-            }),
-          split: (function (lr) {
-              return [
-                      {
-                        hd: {
-                          NAME: "hello",
-                          VAL: Raw$RescriptMpst.assertfalse(undefined)
-                        },
-                        tl: /* [] */0
-                      },
-                      {
-                        hd: {
-                          NAME: "goodbye",
-                          VAL: Raw$RescriptMpst.assertfalse(undefined)
-                        },
-                        tl: /* [] */0
-                      }
-                    ];
-            })
+          hd: {
+            NAME: "hello",
+            VAL: Raw$RescriptMpst.assertfalse(undefined)
+          },
+          tl: {
+            hd: {
+              NAME: "goodbye",
+              VAL: Raw$RescriptMpst.assertfalse(undefined)
+            },
+            tl: /* [] */0
+          }
         };
 }
+
+function hello_or_goodbye_split(lr) {
+  return [
+          {
+            hd: {
+              NAME: "hello",
+              VAL: Raw$RescriptMpst.assertfalse(undefined)
+            },
+            tl: /* [] */0
+          },
+          {
+            hd: {
+              NAME: "goodbye",
+              VAL: Raw$RescriptMpst.assertfalse(undefined)
+            },
+            tl: /* [] */0
+          }
+        ];
+}
+
+var hello_or_goodbye = {
+  concat: hello_or_goodbye_concat,
+  split: hello_or_goodbye_split
+};
 
 function to_bob(disj) {
   return {
@@ -158,14 +170,14 @@ function to_bob(disj) {
                                       __out_witness: v
                                     }
                                   };
-                          }), Curry._2(Curry._1(disj, undefined).concat, List.map((function (param) {
+                          }), Curry._2(disj.concat, List.map((function (param) {
                                     return param.VAL.__out_witness;
                                   }), l), List.map((function (param) {
                                     return param.VAL.__out_witness;
                                   }), r)));
             }),
           split: (function (lr) {
-              var match = Curry._1(Curry._1(disj, undefined).split, List.map((function (param) {
+              var match = Curry._1(disj.split, List.map((function (param) {
                           return param.VAL.__out_witness;
                         }), lr));
               return [
@@ -232,9 +244,7 @@ function $neg$neg$great(_from, _to, _label, _next) {
   return Raw$RescriptMpst.dontknow(undefined);
 }
 
-function finish(param) {
-  return Raw$RescriptMpst.dontknow(undefined);
-}
+var finish = Raw$RescriptMpst.dontknow(undefined);
 
 function choice_at(_alice, _disj, param, param$1) {
   return Raw$RescriptMpst.dontknow(undefined);
@@ -244,20 +254,17 @@ function extract(_g, _role) {
   return Raw$RescriptMpst.todo(undefined);
 }
 
-function g(param) {
-  return choice_at(alice, to_bob(hello_or_goodbye), [
-              alice,
-              (Raw$RescriptMpst.dontknow(undefined), Raw$RescriptMpst.dontknow(undefined), Raw$RescriptMpst.dontknow(undefined))
-            ], [
-              alice,
-              (Raw$RescriptMpst.dontknow(undefined), Raw$RescriptMpst.dontknow(undefined))
-            ]);
-}
+var g = choice_at(alice, to_bob(hello_or_goodbye), [
+      alice,
+      (Raw$RescriptMpst.dontknow(undefined), Raw$RescriptMpst.dontknow(undefined), Raw$RescriptMpst.dontknow(undefined))
+    ], [
+      alice,
+      (Raw$RescriptMpst.dontknow(undefined), Raw$RescriptMpst.dontknow(undefined))
+    ]);
 
 function a(param) {
-  g(undefined);
   var ch = Raw$RescriptMpst.todo(undefined);
-  var ch1 = send(ch, (function (x) {
+  var ch$1 = send(ch, (function (x) {
           return {
                   NAME: "Bob",
                   VAL: x
@@ -268,7 +275,7 @@ function a(param) {
                   VAL: x
                 };
         }), 123);
-  return receive(ch1, (function (x) {
+  return receive(ch$1, (function (x) {
                   return {
                           NAME: "Carol",
                           VAL: x
@@ -279,7 +286,6 @@ function a(param) {
 }
 
 function b(param) {
-  g(undefined);
   var ch = Raw$RescriptMpst.todo(undefined);
   return receive(ch, (function (x) {
                   return {
@@ -317,7 +323,6 @@ function b(param) {
 }
 
 function c(param) {
-  g(undefined);
   var ch = Raw$RescriptMpst.todo(undefined);
   return receive(ch, (function (x) {
                   return {
@@ -344,6 +349,8 @@ function c(param) {
             });
 }
 
+var x = 1;
+
 exports.lens_a = lens_a;
 exports.lens_b = lens_b;
 exports.lens_c = lens_c;
@@ -360,6 +367,7 @@ exports.open_variant_to_tag = open_variant_to_tag;
 exports.send = send;
 exports.receive = receive;
 exports.close = close;
+exports.x = x;
 exports.$neg$neg$great = $neg$neg$great;
 exports.finish = finish;
 exports.choice_at = choice_at;
@@ -368,4 +376,4 @@ exports.g = g;
 exports.a = a;
 exports.b = b;
 exports.c = c;
-/* No side effect */
+/* finish Not a pure module */

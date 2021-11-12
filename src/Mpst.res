@@ -3,9 +3,11 @@ type session<'a> = {
   mpchan: RawTransport.mpchan,
 }
 
-// 多相ヴァリアントのコンストラクタ. open_variant([> `Bob('v)], 'v)
+// [`Bob; `Alice] : [> `Bob | `Alice] list
+// 多相ヴァリアントのコンストラクタ. v => #Bob(v) : open_variant<#Bob('v), 'v>
 type open_variant<'var, 'v> = 'v => 'var
 
+// #Bob(v) => v
 type closed_variant<'var, 'v> = 'var => 'v
 
 type disj<'lr, 'l, 'r> = {
@@ -20,15 +22,15 @@ type lens<'a, 'b, 's, 't> = {
   put: ('s, session<'b>) => 't,
 }
 
-let lens_a = () => {
+let lens_a =  {
   get: ((a, _, _)) => a,
   put: ((_, b, c), a) => (a, b, c),
 }
-let lens_b = () => {
+let lens_b = {
   get: ((_, b, _)) => b,
   put: ((a, _, c), b) => (a, b, c),
 }
-let lens_c = () => {
+let lens_c = {
   get: ((_, _, c)) => c,
   put: ((a, b, _), c) => (a, b, c),
 }
@@ -37,24 +39,25 @@ type role<'a, 'b, 's, 't, 'obj, 'v> = {
   role_label: closed_variant<'obj, 'v>,
   role_lens: lens<'a, 'b, 's, 't>,
 }
+// 
 
-let alice = () => {role_label: (#Alice(v)) => v, role_lens: lens_a()}
+let alice = {role_label: (#Alice(v)) => v, role_lens: lens_a}
 
-let bob = () => {role_label: (#Bob(v)) => v, role_lens: lens_b()}
+let bob = {role_label: (#Bob(v)) => v, role_lens: lens_b}
 
-let carol = () => {role_label: (#Carol(v)) => v, role_lens: lens_c()}
+let carol = {role_label: (#Carol(v)) => v, role_lens: lens_c}
 
 type label<'obj, 't, 'var, 'u> = {
   label_closed: closed_variant<'obj, 't>,
   label_open: open_variant<'var, 'u>,
 }
 
-let hello = () => {
+let hello = {
   label_closed: (#hello(v)) => v,
   label_open: v => #hello(v),
 }
 
-let goodbye = () => {
+let goodbye = {
   label_closed: (#goodbye(v)) => v,
   label_open: v => #goodbye(v),
 }
@@ -65,7 +68,7 @@ type inp<'lab> = {__inp_witness: 'lab}
 
 let list_match: ('a => 'b, list<'a>) => 'b = (_, _) => Raw.assertfalse()
 
-let hello_or_goodbye = () => {
+let hello_or_goodbye = {
   split: lr => (list{#hello(list_match(x =>
           switch x {
           | #hello(v) => v
@@ -87,13 +90,13 @@ let to_bob = disj => {
   concat: (l, r) =>
     List.map(
       v => #Bob({__out_witness: v}),
-      disj().concat(
+      disj.concat(
         List.map((#Bob(v)) => v.__out_witness, l),
         List.map((#Bob(v)) => v.__out_witness, r),
       ),
     ),
   split: lr => {
-    let (l, r) = disj().split(List.map((#Bob(v)) => v.__out_witness, lr))
+    let (l, r) = disj.split(List.map((#Bob(v)) => v.__out_witness, lr))
     (List.map(v => #Bob({__out_witness: v}), l), List.map(v => #Bob({__out_witness: v}), r))
   },
 }
@@ -133,32 +136,32 @@ let receive: 'var 'lab. (session<'var>, open_variant<'var, inp<'lab>>) => Js.Pro
 
 let close: session<unit> => unit = _ => ()
 
+let x : 'a = 1
+
 let \"-->": 'from 'to_ 'outlab 'inplab 's 't 'v 'next 'mid 'cur. (
-  unit => role<'s, 'to_, 'mid, 'cur, 'from, inp<'inplab>>,
-  unit => role<'t, 'from, 'next, 'mid, 'to_, out<'outlab>>,
-  unit => label<'outlab, ('v, session<'s>), 'inplab, ('v, session<'t>)>,
-  unit => 'next,
-  unit,
+  role<'s, 'to_, 'mid, 'cur, 'from, inp<'inplab>>,
+  role<'t, 'from, 'next, 'mid, 'to_, out<'outlab>>,
+  label<'outlab, ('v, session<'s>), 'inplab, ('v, session<'t>)>,
+  'next,
 ) => 'cur = (_from, _to, _label, _next) => Raw.dontknow()
 
-let finish: unit => global<unit, unit, unit> = () => Raw.dontknow()
+let finish: global<unit, unit, unit> = Raw.dontknow()
 
 let choice_at: 'cur 'a 'b 'c 'left 'right 'lr 'l 'r 'x. (
-  unit => role<unit, 'lr, global<'a, 'b, 'c>, 'cur, 'x, _>,
+  role<unit, 'lr, global<'a, 'b, 'c>, 'cur, 'x, _>,
   disj<'lr, 'l, 'r>,
-  (unit => role<'l, unit, 'left, global<'a, 'b, 'c>, 'x, _>, unit => 'left),
-  (unit => role<'r, unit, 'right, global<'a, 'b, 'c>, 'x, _>, unit => 'right),
-  unit,
+  (role<'l, unit, 'left, global<'a, 'b, 'c>, 'x, _>, 'left),
+  (role<'r, unit, 'right, global<'a, 'b, 'c>, 'x, _>, 'right),
 ) => 'cur = (_alice, _disj, (_alice1, _left), (_alice2, _right)) => Raw.dontknow()
 
 let extract: 'a 'b 'c. (
-  unit => global<'a, 'b, 'c>,
-  unit => role<'t, _, global<'a, 'b, 'c>, _, _, _>,
+  global<'a, 'b, 'c>,
+  role<'t, _, global<'a, 'b, 'c>, _, _, _>,
 ) => session<'t> = (_g, _role) => Raw.todo()
 
 // Example
 
-let g = () =>
+let g = 
   choice_at(
     alice,
     to_bob(hello_or_goodbye),
@@ -170,13 +173,14 @@ let g = () =>
   )
 
 let a = () => {
-  let ch = extract(g(), alice)
-  let ch1 = send(ch, x => #Bob(x), x => #hello(x), 123)
-  receive(ch1, x => #Carol(x))->Promise.thenResolve((#hello(_v, ch2)) => close(ch2))
+  let ch = extract(g, alice)
+  // send(ch["bob"]["hello"], 123)
+  let ch = send(ch, x => #Bob(x), x => #hello(x), 123)
+  receive(ch, x => #Carol(x))->Promise.thenResolve((#hello(_v, ch)) => close(ch))
 }
 
 let b = () => {
-  let ch = extract(g(), bob)
+  let ch = extract(g, bob)
   receive(ch, x => #Alice(x))->Promise.thenResolve(ret => {
     let ch = switch ret {
     | #hello(_v, ch) => send(ch, x => #Carol(x), x => #hello(x), 123)
@@ -187,7 +191,7 @@ let b = () => {
 }
 
 let c = () => {
-  let ch = extract(g(), carol)
+  let ch = extract(g, carol)
   receive(ch, x => #Bob(x))->Promise.thenResolve(ret => {
     let ch = switch ret {
     | #hello(_v, ch) => send(ch, x => #Alice(x), x => #hello(x), 123)
@@ -196,3 +200,4 @@ let c = () => {
     close(ch)
   })
 }
+
